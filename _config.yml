@@ -21,3 +21,5 @@ plugins:
 
 header_pages:
   - about.md
+
+future: true

@@ -1,7 +1,7 @@
 ---
 layout: post
 title: "I Run 17 Products From One Go Binary. Here's the Case For and Against."
-date: 2026-07-07 20:10:00 +0300
+date: 2026-07-07 08:30:00 +0300
 tags: [go, architecture, backend, self-hosting]
 ---
 
