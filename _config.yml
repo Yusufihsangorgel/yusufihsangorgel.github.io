@@ -1,0 +1,23 @@
+title: Yusuf İhsan Görgel
+tagline: Notes on Go, Flutter, and running things myself
+description: >-
+  I build Flutter apps and the Go backends behind them, and I write about the
+  decisions that go into them — mostly architecture, self-hosting, and the
+  tradeoffs nobody puts in the tutorial.
+author: Yusuf İhsan Görgel
+email: developeryusuf@icloud.com
+url: "https://yusufihsangorgel.github.io"
+
+theme: minima
+minima:
+  skin: classic
+  social_links:
+    github: Yusufihsangorgel
+    devto: yusufihsangorgel
+
+plugins:
+  - jekyll-feed
+  - jekyll-seo-tag
+
+header_pages:
+  - about.md
