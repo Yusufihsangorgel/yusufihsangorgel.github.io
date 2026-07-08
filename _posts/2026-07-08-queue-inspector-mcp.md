@@ -7,6 +7,16 @@ tags: [mcp, redis, queue, asynq, bullmq]
 
 ![queue-inspector-mcp](https://raw.githubusercontent.com/Yusufihsangorgel/queue-inspector-mcp/main/doc/cover.png)
 
+```mermaid
+flowchart LR
+    A["AI agent"] -->|"MCP · stdio"| M["queue-inspector-mcp"]
+    M --> B1["Asynq adapter"]
+    M --> B2["BullMQ adapter"]
+    B1 -->|ioredis| R[("Redis")]
+    B2 -->|ioredis| R
+    M -.->|"--read-only"| G{{"prod-safe"}}
+```
+
 ![queue-inspector-mcp — an MCP server for inspecting Redis job queues](https://raw.githubusercontent.com/Yusufihsangorgel/queue-inspector-mcp/main/doc/cover.png)
 
 A queue backs up at 2am. The retry count is climbing and something downstream is timing out. The questions in your head are all about jobs: how many tasks are stuck in retry, what error the top one failed with, how many attempts it has left, whether the dead ones can be requeued safely.
