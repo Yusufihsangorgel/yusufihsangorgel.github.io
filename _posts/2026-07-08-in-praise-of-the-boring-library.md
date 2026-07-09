@@ -35,7 +35,7 @@ Asynq — the Go library I was homesick for — is years of production hardening
 
 That instinct is a trap. Copying a mature library's surface into a first version doesn't give you a mature library — it gives you a large, shallow one, full of features you haven't earned the right to claim work. A first version that does one thing — enqueue, process, retry, dead-letter — and does it in code you can read top to bottom is more trustworthy than one that does eight things vaguely and hides where each one breaks.
 
-So I cut. No scheduler. No backoff — the retries are immediate, and I wrote that limitation directly into the README instead of burying it. No dashboard. What's left is small enough to hold in your head, and honest about exactly where it stops.
+So I cut. The first version had no scheduler, no backoff — retries ran immediately — and no dashboard, and I wrote each limitation into the README instead of burying it. Backoff earned its way into a later version, once I'd watched immediate retries hammer a failing dependency and understood exactly why it was worth the extra code; the scheduler and dashboard I still haven't added, because I haven't needed them yet. What shipped stayed small enough to hold in your head, and honest about exactly where it stopped.
 
 I've come to think that's the real craft in a small library: not what you're clever enough to add, but what you're disciplined enough to leave out, and whether you can say plainly what it costs you. A dependency that oversells itself is worse than one that under-promises. The person evaluating it for real work doesn't need to be impressed; they need to know precisely where the edge is.
 
