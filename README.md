@@ -4,8 +4,9 @@ Personal engineering notes published with GitHub Pages.
 
 ## Medium mirror
 
-Posts published after the July 2026 relaunch can be synchronized from the
-public Medium feed without third-party services:
+The complete public Medium archive can be synchronized without third-party
+services. The bounded RSS feed supplies current posts; the script also retains
+canonical records for the earliest posts that have aged out of that feed:
 
 ```bash
 node tool/sync_medium_posts.mjs

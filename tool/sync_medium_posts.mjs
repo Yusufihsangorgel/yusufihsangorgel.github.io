@@ -5,7 +5,6 @@ import {join} from 'node:path';
 
 const feedUrl = 'https://medium.com/feed/@developeryusufihsan';
 const postsDirectory = new URL('../_posts/', import.meta.url);
-const launchDate = Date.parse('2026-07-01T00:00:00Z');
 const checkOnly = process.argv.includes('--check');
 const refresh = process.argv.includes('--refresh');
 
@@ -111,6 +110,48 @@ const htmlText = (value) =>
 const firstParagraph = (value) =>
   htmlText(value.match(/<p>([\s\S]*?)<\/p>/)?.[1] ?? '');
 
+// Medium's RSS feed is intentionally bounded and no longer includes these
+// earliest public posts. Keep their canonical records here so a successful
+// mirror check means the complete public archive, not only the latest page.
+const legacyItems = [
+  {
+    title:
+      "Flutter’da GetX Tabanlı Proje’de Restful API’ler ile çalışma (Part 1)",
+    publishedAt: new Date('2022-11-09T09:00:00Z'),
+    mediumUrl:
+      'https://medium.com/@developeryusufihsan/flutterda-getx-tabanl%C4%B1-proje-de-restful-api-ler-ile-%C3%A7al%C4%B1%C5%9Fma-part-1-3b1a3dae8f5b',
+    tags: ['flutter', 'getx', 'rest-api', 'türkçe'],
+    description:
+      'The first part of an early Turkish tutorial on structuring a REST API flow with Flutter and GetX.',
+    html:
+      '<p>This early tutorial remains available in full on Medium as part of a three-part Flutter and GetX series.</p>',
+  },
+  {
+    title:
+      "Flutter’da GetX Tabanlı Proje’de Restful API’ler ile çalışma (Part 2)",
+    publishedAt: new Date('2022-11-09T09:30:00Z'),
+    mediumUrl:
+      'https://medium.com/@developeryusufihsan/flutterda-getx-tabanl%C4%B1-proje-de-restful-api-ler-ile-%C3%A7al%C4%B1%C5%9Fma-part-2-ba9a8c6aae09',
+    tags: ['flutter', 'getx', 'rest-api', 'türkçe'],
+    description:
+      'The second part of an early Turkish tutorial on Flutter, GetX, and REST API state handling.',
+    html:
+      '<p>This early tutorial remains available in full on Medium as part of a three-part Flutter and GetX series.</p>',
+  },
+  {
+    title:
+      "Flutter’da GetX Tabanlı Proje’de Restful API’ler ile çalışma (Part 3)",
+    publishedAt: new Date('2022-11-09T10:00:00Z'),
+    mediumUrl:
+      'https://medium.com/@developeryusufihsan/flutterda-getx-tabanl%C4%B1-proje-de-restful-api-ler-ile-%C3%A7al%C4%B1%C5%9Fma-part-3-ce6e1592d5b8',
+    tags: ['flutter', 'getx', 'rest-api', 'türkçe'],
+    description:
+      'The final part of an early Turkish tutorial completing the Flutter and GetX REST API example.',
+    html:
+      '<p>This early tutorial remains available in full on Medium as part of a three-part Flutter and GetX series.</p>',
+  },
+];
+
 const response = await fetch(feedUrl, {
   headers: {'user-agent': 'yusufihsangorgel.github.io Medium sync'},
 });
@@ -119,7 +160,7 @@ if (!response.ok) {
 }
 
 const xml = await response.text();
-const items = [...xml.matchAll(/<item>([\s\S]*?)<\/item>/g)]
+const feedItems = [...xml.matchAll(/<item>([\s\S]*?)<\/item>/g)]
   .map((match) => match[1])
   .map((item) => ({
     title: field(item, 'title'),
@@ -128,8 +169,8 @@ const items = [...xml.matchAll(/<item>([\s\S]*?)<\/item>/g)]
     tags: categories(item),
     html: cleanMediumHtml(htmlField(item, 'content:encoded')),
   }))
-  .map((item) => ({...item, description: firstParagraph(item.html)}))
-  .filter((item) => item.publishedAt.getTime() >= launchDate)
+  .map((item) => ({...item, description: firstParagraph(item.html)}));
+const items = [...feedItems, ...legacyItems]
   .filter((item, index, all) => {
     const title = normalizeTitle(item.title);
     return all.findIndex((candidate) => normalizeTitle(candidate.title) === title) === index;
