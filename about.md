@@ -12,4 +12,5 @@ self-hosting, and the tradeoffs that don't make it into tutorials. I try to
 write the version I wish I'd found when I was making the same call.
 
 - GitHub — [Yusufihsangorgel](https://github.com/Yusufihsangorgel)
+- Medium — [@developeryusufihsan](https://medium.com/@developeryusufihsan)
 - dev.to — [@yusufihsangorgel](https://dev.to/yusufihsangorgel)
