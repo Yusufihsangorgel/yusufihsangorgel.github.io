@@ -8,7 +8,7 @@ canonical_url: "https://dev.to/yusufihsangorgel/making-an-mcp-client-library-che
 description: "A Dart MCP package earns trust when a reader can run it, when its list helpers stop after a bounded number of pages by default, and when CI checks it against the protocol's conformance suite every week."
 ---
 
-*Also published on [dev.to](https://dev.to/yusufihsangorgel/making-an-mcp-client-library-checkable-a-runnable-example-bounded-pagination-and-a-weekly-i49).*
+*Also published on [dev.to](https://dev.to/yusufihsangorgel/making-an-mcp-client-library-checkable-a-runnable-example-bounded-pagination-and-a-weekly-i49) and [Medium](https://medium.com/@developeryusufihsan/making-an-mcp-client-library-checkable-a-runnable-example-bounded-pagination-and-a-weekly-004f2e5e6524).*
 
 *Disclosure: this article was drafted with AI tools from my own merged pull requests and reviewed before publishing. Every technical claim links to the pull request or file it comes from.*
 
