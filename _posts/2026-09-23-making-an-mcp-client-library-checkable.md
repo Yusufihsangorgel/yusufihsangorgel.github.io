@@ -10,6 +10,8 @@ description: "A Dart MCP package earns trust when a reader can run it, when its 
 
 *Also published on [dev.to](https://dev.to/yusufihsangorgel/making-an-mcp-client-library-checkable-a-runnable-example-bounded-pagination-and-a-weekly-i49).*
 
+*Disclosure: this article was drafted with AI tools from my own merged pull requests and reviewed before publishing. Every technical claim links to the pull request or file it comes from.*
+
 A Dart package for the Model Context Protocol earns trust in three ways. A reader can clone the repository, run a client and a server, and watch them talk. A caller can use helpers that list everything a server has without risking an infinite loop. A scheduled job checks the package against the protocol's own conformance suite on a regular cadence. This article walks through the pull requests that made those three things true for `package:dart_mcp`, plus two protocol edge cases and the documentation that holds it together.
 
 ## A runnable client and server pair
