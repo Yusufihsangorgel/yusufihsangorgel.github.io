@@ -5,14 +5,14 @@ date: 2026-09-23 12:02:58 +0300
 tags: ["dart", "model-context-protocol", "open-source", "testing"]
 devto_url: "https://dev.to/yusufihsangorgel/making-an-mcp-client-library-checkable-a-runnable-example-bounded-pagination-and-a-weekly-i49"
 canonical_url: "https://dev.to/yusufihsangorgel/making-an-mcp-client-library-checkable-a-runnable-example-bounded-pagination-and-a-weekly-i49"
-description: "A Dart MCP package earns trust when a reader can run it, when its helpers cannot loop forever, and when CI checks it against the protocol's conformance suite every week."
+description: "A Dart MCP package earns trust when a reader can run it, when its list helpers stop after a bounded number of pages by default, and when CI checks it against the protocol's conformance suite every week."
 ---
 
 *Also published on [dev.to](https://dev.to/yusufihsangorgel/making-an-mcp-client-library-checkable-a-runnable-example-bounded-pagination-and-a-weekly-i49).*
 
 *Disclosure: this article was drafted with AI tools from my own merged pull requests and reviewed before publishing. Every technical claim links to the pull request or file it comes from.*
 
-A Dart package for the Model Context Protocol earns trust in three ways. A reader can clone the repository, run a client and a server, and watch them talk. A caller can use helpers that list everything a server has without risking an infinite loop. A scheduled job checks the package against the protocol's own conformance suite on a regular cadence. This article walks through the pull requests that made those three things true for `package:dart_mcp`, plus two protocol edge cases and the documentation that holds it together.
+A Dart package for the Model Context Protocol earns trust in three ways. A reader can clone the repository, run a client and a server, and watch them talk. A caller can use helpers that list everything a server has and that, by default, stop after a fixed number of pages. A scheduled job checks the package against the protocol's own conformance suite on a regular cadence. This article walks through the pull requests that made those three things true for `package:dart_mcp`, plus two protocol edge cases and the documentation that holds it together.
 
 ## A runnable client and server pair
 
@@ -32,7 +32,7 @@ Two details in that pull request matter more than the convenience.
 
 First, each single-page method stays byte-identical. Existing callers keep their exact behaviour, and the new helpers sit beside them rather than replacing them. If you only want the first page, the old method still gives you exactly that.
 
-Second, the helpers cannot loop forever. A buggy or hostile server could return a cursor on every page indefinitely, and a naive `while (cursor != null)` loop would spin without end. The new methods carry a default bound of 64 pages and throw when they exceed it. Passing `null` as the bound lifts it for callers who genuinely want unbounded walking. The tests cover the cursor threading, the bound, the argument check and an empty page.
+Second, by default the helpers stop. A buggy or hostile server could return a cursor on every page indefinitely, and a naive `while (cursor != null)` loop would spin without end. The new methods carry a default bound of 64 pages and throw when they exceed it. Passing `null` as the bound lifts it for callers who genuinely want unbounded walking. The tests cover the cursor threading, the bound, the argument check and an empty page.
 
 The bound is the part I would argue for hardest. A helper that can hang turns a server bug into a stuck client process. Making the safe behaviour the default and the unsafe one an explicit opt-in is the right shape for this API. Worth noting that the conformance fixture under `tool/` drops `nextCursor` today, meaning the existing fixture never exercises pagination, and the tests had to cover it directly. This work was part of issue #28.
 
@@ -42,7 +42,7 @@ Two smaller pull requests fixed corners of the protocol surface.
 
 [PR #685](https://github.com/dart-lang/ai/pull/685) addressed sampling content. In the schema, both `SamplingMessage.content` and `CreateMessageResult.content` accept five block types or an array of them. The getter cast straight to a single block, and a list on the wire threw. Issue #672 flagged that array-valued message content wanted its own change. After the pull request, both shapes read as a list, with one block still going out as that block on serialization. Reading accepts what the schema permits, while writing keeps the simple form simple.
 
-[PR #684](https://github.com/dart-lang/ai/pull/684) fixed a status code on the server side. A branch that rejects a request based on its media type answered with 415, while the schema's `HeaderMismatch` carries `400 Bad Request`. A revision that requires the `Mcp-Method`, `Mcp-Name` and `MCP-Protocol-Version` headers does not count a media type among them, and elsewhere in the same file that code always pairs with 400. The branch now matches the oversized-body case, which already gets a generic invalid request error with its own 413. One bookkeeping note: since the handler landed after 0.5.2, its changelog line states the behaviour rather than describing a change.
+[PR #684](https://github.com/dart-lang/ai/pull/684) changed the error code, not the status. A request whose body is not `application/json` still gets 415, but the JSON-RPC error in that response was `HeaderMismatch`, and the schema binds `HeaderMismatch` to `400 Bad Request`. A revision that requires the `Mcp-Method`, `Mcp-Name` and `MCP-Protocol-Version` headers does not count a media type among them, and elsewhere in the same file that code always pairs with 400. That response now carries a generic invalid request error, the code an oversized body already gets with its own 413. One bookkeeping note: since the handler landed after 0.5.2, its changelog line states the behaviour rather than describing a change.
 
 ## Checking against the conformance suite every week
 
@@ -65,3 +65,5 @@ Documentation drift is not cosmetic here. A README section describing a removed 
 ## What I would do the same way again
 
 These changes landed over one week: the conformance run on September 15, the README on September 16, pagination, both protocol fixes and `DEVELOPING.md` on September 21, and the client example on September 22. Looking back at them, three choices are the ones I would repeat. New helpers went beside the existing single-page methods instead of replacing them, and no caller had to change a line. The safe behaviour became the default: a 64-page bound that throws, with `null` as an explicit opt-out. And a dependency that is still alpha got a job that shows its failures without gating every pull request, with a baseline checked in both directions. None of this asks a reader to trust anything they cannot run, bound, or see checked on a schedule.
+
+*Correction, 2026-09-23: an earlier version said #684 fixed a status code. It changed the JSON-RPC error code sent with 415, and the status stayed 415.*
