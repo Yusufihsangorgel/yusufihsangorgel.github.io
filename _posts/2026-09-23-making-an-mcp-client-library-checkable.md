@@ -1,69 +1,162 @@
 ---
 layout: post
-title: "Making an MCP client library checkable: a runnable example, bounded pagination and a weekly conformance run"
+title: "Run it, bound it, check it every week: how I made a Dart MCP client checkable"
 date: 2026-09-23 12:02:58 +0300
 tags: ["dart", "model-context-protocol", "open-source", "testing"]
 devto_url: "https://dev.to/yusufihsangorgel/making-an-mcp-client-library-checkable-a-runnable-example-bounded-pagination-and-a-weekly-i49"
 canonical_url: "https://dev.to/yusufihsangorgel/making-an-mcp-client-library-checkable-a-runnable-example-bounded-pagination-and-a-weekly-i49"
-description: "A Dart MCP package earns trust when a reader can run it, when its list helpers stop after a bounded number of pages by default, and when CI checks it against the protocol's conformance suite every week."
+description: "Run the Dart client and server in two commands. List helpers default to a 64-page limit, and the MCP conformance suite runs weekly."
 ---
 
 *Also published on [dev.to](https://dev.to/yusufihsangorgel/making-an-mcp-client-library-checkable-a-runnable-example-bounded-pagination-and-a-weekly-i49) and [Medium](https://medium.com/@developeryusufihsan/making-an-mcp-client-library-checkable-a-runnable-example-bounded-pagination-and-a-weekly-004f2e5e6524).*
 
 *Disclosure: this article was drafted with AI tools from my own merged pull requests and reviewed before publishing. Every technical claim links to the pull request or file it comes from.*
 
-A Dart package for the Model Context Protocol earns trust in three ways. A reader can clone the repository, run a client and a server, and watch them talk. A caller can use helpers that list everything a server has and that, by default, stop after a fixed number of pages. A scheduled job checks the package against the protocol's own conformance suite on a regular cadence. This article walks through the pull requests that made those three things true for `package:dart_mcp`, plus two protocol edge cases and the documentation that holds it together.
+A protocol library has to connect, list results, stop and follow the spec.
 
-## A runnable client and server pair
+**You should be able to check those promises without taking my word for it.**
 
-The repository already had a server example at `example/streamable_http_server.dart`, but no client to pair with it. The example readme described how to poke the server with a curl command. That is a workable smoke test, but it does not exercise the package from the client side, and it does not show a reader what a real client session looks like.
+Over one week of pull requests to [`package:dart_mcp`](https://pub.dev/packages/dart_mcp), I made three of them checkable:
 
-[PR #671](https://github.com/dart-lang/ai/pull/671) added a streamable HTTP client example. It takes the URL the server prints when it starts, discovers the server, lists its tools, calls `greet`, and prints the progress notification that arrives while the call runs. The example readme now describes the pair of programs instead of the curl command.
+- **Run it:** a client example that talks to the existing server example.
+- **Bound it:** list helpers that walk every page and stop after 64.
+- **Check it:** a weekly run against the protocol's own conformance suite.
 
-This is the kind of change that looks small and pays out repeatedly. Anyone can now run both sides locally, watch the handshake and the tool call happen, and confirm that progress notifications actually flow. The work was part of issue #668.
+Start with the client example.
 
-## Walking every page without walking forever
+## 1. Run both sides in two terminals
 
-The MCP list requests can page their results. A server returns a page of items and a `nextCursor`, and the client sends the cursor back to get the next page. A client that wants every tool from a server that pages its list has to thread the cursor by hand: call, check for a cursor, call again with it, accumulate, repeat.
+The repository had a server example, `example/streamable_http_server.dart`. It had no client to pair with it.
 
-[PR #682](https://github.com/dart-lang/ai/pull/682) moved that loop into the package. Four new methods, `listAllTools`, `listAllResources`, `listAllResourceTemplates` and `listAllPrompts`, walk the pages and yield the items as a `Stream`. Callers get a stream of items and never think about cursors.
+Its readme suggested a `curl` command. That shows the wire format. It does not show how the Dart client API fits together.
 
-Two details in that pull request matter more than the convenience.
+[PR #671](https://github.com/dart-lang/ai/pull/671) added [`example/streamable_http_client.dart`](https://github.com/dart-lang/ai/blob/main/pkgs/dart_mcp/example/streamable_http_client.dart). Start the server, copy the URL it prints, and pass it to the client:
 
-First, each single-page method stays byte-identical. Existing callers keep their exact behaviour, and the new helpers sit beside them rather than replacing them. If you only want the first page, the old method still gives you exactly that.
+```sh
+cd pkgs/dart_mcp
+dart run example/streamable_http_server.dart
+# Listening on http://127.0.0.1:61009/mcp   (the port changes per run)
 
-Second, by default the helpers stop. A buggy or hostile server could return a cursor on every page indefinitely, and a naive `while (cursor != null)` loop would spin without end. The new methods carry a default bound of 64 pages and throw when they exceed it. Passing `null` as the bound lifts it for callers who genuinely want unbounded walking. The tests cover the cursor threading, the bound, the argument check and an empty page.
+dart run example/streamable_http_client.dart http://127.0.0.1:61009/mcp
+```
 
-The bound is the part I would argue for hardest. A helper that can hang turns a server bug into a stuck client process. Making the safe behaviour the default and the unsafe one an explicit opt-in is the right shape for this API. Worth noting that the conformance fixture under `tool/` drops `nextCursor` today, meaning the existing fixture never exercises pagination, and the tests had to cover it directly. This work was part of issue #28.
+This is the client's output from a run on the current `main`:
 
-## Two protocol edges: sampling content and 415
+```text
+connecting to server at http://127.0.0.1:61009/mcp
+discovering server
+Listing tools from server
+Found Tool: greet
+Calling `greet` tool
+Progress: 1/1: Greeting world
+Tool call succeeded: [{text: Hello, world!, type: text}]
+```
 
-Two smaller pull requests fixed corners of the protocol surface.
+![The client discovers the server, lists tools, calls greet, receives a progress notification and the result](https://yusufihsangorgel.github.io/assets/img/2026-09-23-mcp-checkable/pair.png)
 
-[PR #685](https://github.com/dart-lang/ai/pull/685) addressed sampling content. In the schema, both `SamplingMessage.content` and `CreateMessageResult.content` accept five block types or an array of them. The getter cast straight to a single block, and a list on the wire threw. Issue #672 flagged that array-valued message content wanted its own change. After the pull request, both shapes read as a list, with one block still going out as that block on serialization. Reading accepts what the schema permits, while writing keeps the simple form simple.
+**The client is 94 lines.** You can read it in one sitting and copy it into a project as a starting point.
 
-[PR #684](https://github.com/dart-lang/ai/pull/684) changed the error code, not the status. A request whose body is not `application/json` still gets 415, but the JSON-RPC error in that response was `HeaderMismatch`, and the schema binds `HeaderMismatch` to `400 Bad Request`. A revision that requires the `Mcp-Method`, `Mcp-Name` and `MCP-Protocol-Version` headers does not count a media type among them, and elsewhere in the same file that code always pairs with 400. That response now carries a generic invalid request error, the code an oversized body already gets with its own 413. One bookkeeping note: since the handler landed after 0.5.2, its changelog line states the behaviour rather than describing a change.
+## 2. List everything, but stop at 64 pages
 
-## Checking against the conformance suite every week
+MCP list requests page their results. A server returns items and a `nextCursor`. The client sends the cursor back to get the next page.
 
-[PR #675](https://github.com/dart-lang/ai/pull/675) made the repository run the MCP conformance suite against both fixtures under `tool/` on a schedule. The triggers are a weekly schedule, a manual dispatch, or any pull request that changes the package.
+Before [PR #682](https://github.com/dart-lang/ai/pull/682), the package left that loop to the caller.
 
-The details of the job reflect where the suite itself stands. The suite is still an alpha npm package, and the job carries `continue-on-error`, meaning a failure stays visible without failing the run. That is the honest configuration for a dependency that is expected to shift underneath you: you want to see the signal without gating every commit on an alpha tool.
+Now there are four helpers: `listAllTools`, `listAllResources`, `listAllResourceTemplates` and `listAllPrompts`. Each one returns a `Stream` and yields items as pages arrive.
 
-The results give a concrete picture. Every scored 2026-07-28 scenario passes on the server run, with only the `tasks` extension failing. On the client run, a baseline file names the auth scenarios. The package has no OAuth client, and those listed scenarios are the accepted failures. Anything outside that list failing causes the job to fail, as does a listed scenario that starts passing. The second rule is the one I care about: when a known failure quietly disappears, the job fails until the baseline is updated. The list cannot go stale without anyone noticing.
+```dart
+// Walks every page. Throws a StateError if page 64 still has a cursor.
+await for (final tool in server.listAllTools()) {
+  print(tool.name);
+}
 
-This pull request was a follow-up to #491. A pair of example programs proves the package works for one conversation. The conformance suite checks it against the protocol's own definition of correct, every week, without anyone remembering to ask.
+// Trust the server? Lift the bound explicitly.
+final everything = await server.listAllTools(maxPageCount: null).toList();
+```
 
-## Writing it down: DEVELOPING.md and the README
+**A server that never stops paging should not trap your walk.**
 
-Code that a contributor cannot navigate does not stay healthy. [PR #673](https://github.com/dart-lang/ai/pull/673) added a `DEVELOPING.md` for the package. It is short and covers what someone needs to work on the package: where the schema files live, the checks CI runs, the SDK the format check needs, the conformance fixtures, and the changelog convention. I named it `DEVELOPING.md` rather than a second `CONTRIBUTING.md`, since the repository root already has one, and the new file links there. The same pull request fixed a stale pointer: the library comment in `api.dart` still referenced the 2025-06-18 schema file, and it now points at the schema directory. This closes issue #20.
+A server that hands out a cursor on every page keeps a naive `while (cursor != null)` loop running forever. By default the helpers stop. When a 64th page still ends in a cursor, they throw a `StateError`.
 
-[PR #677](https://github.com/dart-lang/ai/pull/677) cleaned up the README after a feature removal. Taking elicitation, sampling and roots out of the server left a readme section describing a call pattern that no longer exists. It now describes answering with an `InputRequiredResult`, and that answer serves every revision. Streamable HTTP also moved from a construction marker to supported in the support table. Neither the handler nor the client channel carries an unfinished piece, and the row's note already names what the revision removed.
+![The walk requests a page, yields its items, ends on a null cursor, and throws after 64 pages](https://yusufihsangorgel.github.io/assets/img/2026-09-23-mcp-checkable/pages.png)
 
-Documentation drift is not cosmetic here. A README section describing a removed pattern sends every new reader down a dead end, and a support table with stale markers misstates what the package can do.
+The pull request only adds code to `client.dart`: 120 lines added, none removed. The single-page methods are untouched. Existing callers keep their exact behaviour.
+
+The [tests](https://github.com/dart-lang/ai/blob/main/pkgs/dart_mcp/test/client/pagination_test.dart) pin the edges a real server can hit:
+
+- an empty string `nextCursor` is a cursor, not the end;
+- an empty page in the middle does not end the walk;
+- the first page yields before the second page is requested;
+- `maxPageCount` stops a server that alternates two cursors.
+
+## 3. Sampling content as a list, and the error inside a 415
+
+**Sampling content can be one block or a list.** In the schema, `SamplingMessage.content` and `CreateMessageResult.content` take one block or an array of blocks. The old getter cast straight to one block, and a list on the wire threw.
+
+[PR #685](https://github.com/dart-lang/ai/pull/685) changed the getter's type:
+
+```diff
+-  SamplingMessageContentBlock get content =>
+-      _value[Keys.content] as SamplingMessageContentBlock;
++  List<SamplingMessageContentBlock> get content {
+```
+
+One block now reads as a one-element list. On the way out, a single block still goes on the wire as that block.
+
+**A 415 now carries the right error code.** [PR #684](https://github.com/dart-lang/ai/pull/684) did not change the HTTP status. It changed the JSON-RPC error inside the response:
+
+```diff
+       HttpStatus.unsupportedMediaType,
+       RpcException(
+-        McpErrorCodes.headerMismatch,
++        error_code.INVALID_REQUEST,
+         'The request body must be sent as ${ContentType.json.mimeType}',
+```
+
+The schema binds `HeaderMismatch` to `400 Bad Request`. `Content-Type` is not one of the headers the specification requires. An oversized body already got a generic invalid request error with its own 413, and this branch now matches it.
+
+## 4. Run conformance weekly and catch stale expected failures
+
+[PR #675](https://github.com/dart-lang/ai/pull/675) added a [workflow](https://github.com/dart-lang/ai/blob/main/.github/workflows/conformance.yaml) that runs the MCP conformance suite against both fixtures under `tool/`:
+
+```yaml
+on:
+  pull_request:
+    paths:
+      - 'pkgs/dart_mcp/**'
+  schedule:
+    - cron: '0 0 * * 0' # weekly
+  workflow_dispatch:
+
+jobs:
+  conformance:
+    continue-on-error: true
+```
+
+The suite is still an alpha npm package, pinned to `0.2.0-alpha.11`. With `continue-on-error`, the job still reports a failure, but the workflow run stays green.
+
+According to the pull request, every scored 2026-07-28 scenario passed on the server run, and the `tasks` extension was the only failure.
+
+The client run reads a [baseline of expected failures](https://github.com/dart-lang/ai/blob/main/pkgs/dart_mcp/tool/conformance_expected_failures.yaml). The package has no OAuth client yet. The file lists the auth scenarios. [PR #681](https://github.com/dart-lang/ai/pull/681) later gave the client step a timeout.
+
+**The baseline is checked in both directions.**
+
+![A failing listed scenario is fine; a failing unlisted one fails the job; a passing listed one also fails the job](https://yusufihsangorgel.github.io/assets/img/2026-09-23-mcp-checkable/baseline.png)
+
+A listed scenario that starts passing also fails the job. When OAuth support lands, the list has to shrink with it. A stale entry shows up as a failing job.
+
+## 5. Docs that match the code
+
+[PR #673](https://github.com/dart-lang/ai/pull/673) added a [`DEVELOPING.md`](https://github.com/dart-lang/ai/blob/main/pkgs/dart_mcp/DEVELOPING.md) for the package. It covers the schema files, the checks CI runs, the conformance fixtures and the changelog convention.
+
+[PR #677](https://github.com/dart-lang/ai/pull/677) cleaned up the README after elicitation, sampling and roots came out of the server. A section still described a call pattern that no longer existed. It now describes answering with an `InputRequiredResult`, and Streamable HTTP is marked supported in the support table.
 
 ## What I would do the same way again
 
-These changes landed over one week: the conformance run on September 15, the README on September 16, pagination, both protocol fixes and `DEVELOPING.md` on September 21, and the client example on September 22. Looking back at them, three choices are the ones I would repeat. New helpers went beside the existing single-page methods instead of replacing them, and no caller had to change a line. The safe behaviour became the default: a 64-page bound that throws, with `null` as an explicit opt-out. And a dependency that is still alpha got a job that shows its failures without gating every pull request, with a baseline checked in both directions. None of this asks a reader to trust anything they cannot run, bound, or see checked on a schedule.
+- **Add helpers beside old methods, not over them.** No existing call to a single-page list method had to change.
+- **Make the safe behaviour the default.** A 64-page bound that throws, with `null` as the explicit way out.
+- **Let an alpha dependency report, not gate.** Its failures stay visible without turning the run red.
+
+Run the example, read the pagination tests, and open the conformance workflow.
 
 *Correction, 2026-09-23: an earlier version said #684 fixed a status code. It changed the JSON-RPC error code sent with 415, and the status stayed 415.*
