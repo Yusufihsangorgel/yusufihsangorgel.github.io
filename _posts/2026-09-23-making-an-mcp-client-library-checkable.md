@@ -3,12 +3,8 @@ layout: post
 title: "Run it, bound it, check it every week: how I made a Dart MCP client checkable"
 date: 2026-09-23 12:02:58 +0300
 tags: ["dart", "model-context-protocol", "open-source", "testing"]
-devto_url: "https://dev.to/yusufihsangorgel/making-an-mcp-client-library-checkable-a-runnable-example-bounded-pagination-and-a-weekly-i49"
-canonical_url: "https://dev.to/yusufihsangorgel/making-an-mcp-client-library-checkable-a-runnable-example-bounded-pagination-and-a-weekly-i49"
 description: "Run the Dart client and server in two commands. List helpers default to a 64-page limit, and the MCP conformance suite runs weekly."
 ---
-
-*Also published on [dev.to](https://dev.to/yusufihsangorgel/making-an-mcp-client-library-checkable-a-runnable-example-bounded-pagination-and-a-weekly-i49) and [Medium](https://medium.com/@developeryusufihsan/making-an-mcp-client-library-checkable-a-runnable-example-bounded-pagination-and-a-weekly-004f2e5e6524).*
 
 A protocol library has to connect, list results, stop and follow the spec.
 
