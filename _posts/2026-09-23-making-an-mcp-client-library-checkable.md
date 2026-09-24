@@ -10,8 +10,6 @@ description: "Run the Dart client and server in two commands. List helpers defau
 
 *Also published on [dev.to](https://dev.to/yusufihsangorgel/making-an-mcp-client-library-checkable-a-runnable-example-bounded-pagination-and-a-weekly-i49) and [Medium](https://medium.com/@developeryusufihsan/making-an-mcp-client-library-checkable-a-runnable-example-bounded-pagination-and-a-weekly-004f2e5e6524).*
 
-*Disclosure: this article was drafted with AI tools from my own merged pull requests and reviewed before publishing. Every technical claim links to the pull request or file it comes from.*
-
 A protocol library has to connect, list results, stop and follow the spec.
 
 **You should be able to check those promises without taking my word for it.**
