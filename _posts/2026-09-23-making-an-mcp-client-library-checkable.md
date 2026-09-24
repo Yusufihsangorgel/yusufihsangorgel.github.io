@@ -3,6 +3,7 @@ layout: post
 title: "Run it, bound it, check it every week: how I made a Dart MCP client checkable"
 date: 2026-09-23 12:02:58 +0300
 tags: ["dart", "model-context-protocol", "open-source", "testing"]
+image: /assets/img/2026-09-23-mcp-checkable/cover.png
 description: "Run the Dart client and server in two commands. List helpers default to a 64-page limit, and the MCP conformance suite runs weekly."
 ---
 
